@@ -1,0 +1,34 @@
+global
+    log /dev/log local0 info
+    log /dev/log local1 notice
+    chroot /var/lib/haproxy
+    stats timeout 30s
+    user haproxy
+    group haproxy
+    daemon
+    #dhparam
+    tune.ssl.default-dh-param 2048
+
+defaults
+    log     global
+    mode    http
+    option  httplog
+    option  dontlognull
+    timeout connect 10s
+    timeout client 15s
+    timeout server 15s
+    timeout http-request 10s
+
+
+frontend machine-learning-store
+    bind *:80
+    bind *:443 ssl crt /etc/letsencrypt/live/www.machinelearningstore.tech/machinelearningstore.pem
+    http-request redirect scheme https unless { ssl_fc }
+    default_backend machine-learning-store
+
+backend machine-learning-store
+    balance roundrobin
+    option httpchk HEAD / HTTP/1.1\r\nHost:\ localhost
+    http-request set-header X-Served-By %b
+    server 6418-web-01 44.208.163.11:80 check
+    server 6418-web-02 54.174.3.116:80 check
